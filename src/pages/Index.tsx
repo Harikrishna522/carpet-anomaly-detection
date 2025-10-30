@@ -1,60 +1,55 @@
 import { useState } from "react";
 import { Scan, Zap, Shield, TrendingUp } from "lucide-react";
 import { UploadZone } from "@/components/UploadZone";
-import { ImagePreview } from "@/components/ImagePreview";
-import { ResultsDisplay } from "@/components/ResultsDisplay";
+import { DefectGallery, ImageResult } from "@/components/DefectGallery";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 
-interface DetectionResult {
-  hasDefect: boolean;
-  confidence: number;
-  defectType?: string;
-  processingTime: number;
-}
-
 const Index = () => {
-  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [result, setResult] = useState<DetectionResult | null>(null);
+  const [results, setResults] = useState<ImageResult[]>([]);
 
-  const handleImageUpload = (file: File) => {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setUploadedImage(e.target?.result as string);
-      setResult(null);
-      toast.success("Image uploaded successfully!");
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleAnalyze = () => {
+  const handleImagesUpload = async (files: File[]) => {
     setIsAnalyzing(true);
+    toast.success(`Analyzing ${files.length} image${files.length > 1 ? 's' : ''}...`);
     
-    // Simulate ML processing
-    setTimeout(() => {
-      const hasDefect = Math.random() > 0.5;
-      const defectTypes = ["hole", "stain", "color", "cut"];
-      
-      setResult({
-        hasDefect,
-        confidence: 0.85 + Math.random() * 0.14,
-        defectType: hasDefect ? defectTypes[Math.floor(Math.random() * defectTypes.length)] : undefined,
-        processingTime: Math.floor(800 + Math.random() * 700),
+    const imagePromises = files.map((file) => {
+      return new Promise<ImageResult>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          // Simulate ML processing
+          setTimeout(() => {
+            const hasDefect = Math.random() > 0.6; // 40% chance of defect
+            const defectTypes = ["hole", "stain", "color mismatch", "tear"];
+            
+            resolve({
+              id: Math.random().toString(36).substr(2, 9),
+              imageUrl: e.target?.result as string,
+              hasDefect,
+              confidence: 0.82 + Math.random() * 0.17,
+              defectType: hasDefect ? defectTypes[Math.floor(Math.random() * defectTypes.length)] : undefined,
+              fileName: file.name,
+            });
+          }, 500 + Math.random() * 1000);
+        };
+        reader.readAsDataURL(file);
       });
-      setIsAnalyzing(false);
-      
-      if (hasDefect) {
-        toast.warning("Defect detected in carpet!");
-      } else {
-        toast.success("No defects found - carpet is in good condition!");
-      }
-    }, 2000);
+    });
+
+    const analysisResults = await Promise.all(imagePromises);
+    setResults(analysisResults);
+    setIsAnalyzing(false);
+    
+    const defectCount = analysisResults.filter(r => r.hasDefect).length;
+    if (defectCount > 0) {
+      toast.warning(`Analysis complete: ${defectCount} defective product${defectCount > 1 ? 's' : ''} found!`);
+    } else {
+      toast.success("Analysis complete: All products passed inspection!");
+    }
   };
 
   const handleClear = () => {
-    setUploadedImage(null);
-    setResult(null);
+    setResults([]);
   };
 
   return (
@@ -105,39 +100,26 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="container mx-auto px-4 pb-16">
-        <div className="max-w-4xl mx-auto">
-          <div className="grid md:grid-cols-2 gap-8">
-            {/* Upload Section */}
-            <div className="space-y-6">
-              {!uploadedImage ? (
-                <UploadZone onImageUpload={handleImageUpload} />
-              ) : (
-                <ImagePreview
-                  imageUrl={uploadedImage}
-                  onClear={handleClear}
-                  onAnalyze={handleAnalyze}
-                  isAnalyzing={isAnalyzing}
-                />
-              )}
+        <div className="max-w-6xl mx-auto">
+          {results.length === 0 ? (
+            <div className="grid md:grid-cols-2 gap-8">
+              <UploadZone onImagesUpload={handleImagesUpload} />
+              
+              <Card className="p-12 bg-gradient-card border-border text-center">
+                <Scan className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-muted-foreground mb-2">
+                  {isAnalyzing ? "Analyzing Images..." : "No Analysis Yet"}
+                </h3>
+                <p className="text-muted-foreground">
+                  {isAnalyzing 
+                    ? "Processing your images for defect detection" 
+                    : "Upload images to start batch defect detection"}
+                </p>
+              </Card>
             </div>
-
-            {/* Results Section */}
-            <div>
-              {result ? (
-                <ResultsDisplay result={result} />
-              ) : (
-                <Card className="p-12 bg-gradient-card border-border text-center">
-                  <Scan className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold text-muted-foreground mb-2">
-                    No Analysis Yet
-                  </h3>
-                  <p className="text-muted-foreground">
-                    Upload an image and click analyze to see detection results
-                  </p>
-                </Card>
-              )}
-            </div>
-          </div>
+          ) : (
+            <DefectGallery results={results} onClear={handleClear} />
+          )}
         </div>
       </main>
     </div>

@@ -3,10 +3,10 @@ import { Upload, Image as ImageIcon } from "lucide-react";
 import { Card } from "@/components/ui/card";
 
 interface UploadZoneProps {
-  onImageUpload: (file: File) => void;
+  onImagesUpload: (files: File[]) => void;
 }
 
-export const UploadZone = ({ onImageUpload }: UploadZoneProps) => {
+export const UploadZone = ({ onImagesUpload }: UploadZoneProps) => {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -23,18 +23,19 @@ export const UploadZone = ({ onImageUpload }: UploadZoneProps) => {
     e.preventDefault();
     setIsDragging(false);
     
-    const files = e.dataTransfer.files;
-    if (files.length > 0 && files[0].type.startsWith("image/")) {
-      onImageUpload(files[0]);
+    const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith("image/"));
+    if (files.length > 0) {
+      onImagesUpload(files);
     }
-  }, [onImageUpload]);
+  }, [onImagesUpload]);
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      onImageUpload(files[0]);
+      const imageFiles = Array.from(files).filter(file => file.type.startsWith("image/"));
+      onImagesUpload(imageFiles);
     }
-  }, [onImageUpload]);
+  }, [onImagesUpload]);
 
   return (
     <Card
@@ -51,6 +52,7 @@ export const UploadZone = ({ onImageUpload }: UploadZoneProps) => {
         <input
           type="file"
           accept="image/*"
+          multiple
           className="hidden"
           onChange={handleFileInput}
         />
@@ -66,13 +68,13 @@ export const UploadZone = ({ onImageUpload }: UploadZoneProps) => {
           )}
         </div>
         <h3 className="text-xl font-semibold mb-2 text-foreground">
-          {isDragging ? "Drop your image here" : "Upload Carpet Image"}
+          {isDragging ? "Drop your images here" : "Upload Carpet Images"}
         </h3>
         <p className="text-muted-foreground text-center">
-          Drag and drop or click to select an image for defect detection
+          Drag and drop or click to select multiple images for batch defect detection
         </p>
         <p className="text-sm text-muted-foreground mt-2">
-          Supports: JPG, PNG, WebP
+          Supports: JPG, PNG, WebP | Multiple files supported
         </p>
       </label>
     </Card>
