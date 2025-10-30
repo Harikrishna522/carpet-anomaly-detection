@@ -13,68 +13,38 @@ const Index = () => {
     setIsAnalyzing(true);
     toast.success(`Analyzing ${files.length} image${files.length > 1 ? 's' : ''}...`);
     
-    const imagePromises = files.map(async (file) => {
-      return new Promise<ImageResult>((resolve, reject) => {
+    const imagePromises = files.map((file) => {
+      return new Promise<ImageResult>((resolve) => {
         const reader = new FileReader();
-        reader.onload = async (e) => {
-          try {
-            const base64Image = e.target?.result as string;
-            
-            // Call the edge function for real AI analysis
-            const response = await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-carpet-defect`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  image: base64Image,
-                  fileName: file.name,
-                }),
-              }
-            );
-
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({ error: 'Analysis failed' }));
-              throw new Error(errorData.error || 'Analysis failed');
-            }
-
-            const analysis = await response.json();
+        reader.onload = (e) => {
+          // Simulate ML processing
+          setTimeout(() => {
+            const hasDefect = Math.random() > 0.6; // 40% chance of defect
+            const defectTypes = ["hole", "stain", "color mismatch", "tear"];
             
             resolve({
               id: Math.random().toString(36).substr(2, 9),
-              imageUrl: base64Image,
-              hasDefect: analysis.hasDefect,
-              confidence: analysis.confidence,
-              defectType: analysis.defectType || undefined,
+              imageUrl: e.target?.result as string,
+              hasDefect,
+              confidence: 0.82 + Math.random() * 0.17,
+              defectType: hasDefect ? defectTypes[Math.floor(Math.random() * defectTypes.length)] : undefined,
               fileName: file.name,
             });
-          } catch (error) {
-            console.error('Analysis error:', error);
-            reject(error);
-          }
+          }, 500 + Math.random() * 1000);
         };
-        reader.onerror = () => reject(new Error('Failed to read file'));
         reader.readAsDataURL(file);
       });
     });
 
-    try {
-      const analysisResults = await Promise.all(imagePromises);
-      setResults(analysisResults);
-      
-      const defectCount = analysisResults.filter(r => r.hasDefect).length;
-      if (defectCount > 0) {
-        toast.warning(`Analysis complete: ${defectCount} defective product${defectCount > 1 ? 's' : ''} found!`);
-      } else {
-        toast.success("Analysis complete: All products passed inspection!");
-      }
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Analysis failed. Please try again.');
-      console.error('Batch analysis error:', error);
-    } finally {
-      setIsAnalyzing(false);
+    const analysisResults = await Promise.all(imagePromises);
+    setResults(analysisResults);
+    setIsAnalyzing(false);
+    
+    const defectCount = analysisResults.filter(r => r.hasDefect).length;
+    if (defectCount > 0) {
+      toast.warning(`Analysis complete: ${defectCount} defective product${defectCount > 1 ? 's' : ''} found!`);
+    } else {
+      toast.success("Analysis complete: All products passed inspection!");
     }
   };
 

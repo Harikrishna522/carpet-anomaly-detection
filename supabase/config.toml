@@ -1,4 +1,0 @@
-project_id = "jexfvxtcgopwmlhnkpdl"
-
-[functions.analyze-carpet-defect]
-verify_jwt = false
