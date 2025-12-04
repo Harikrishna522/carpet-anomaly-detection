@@ -4,7 +4,7 @@ import { UploadZone } from "@/components/UploadZone";
 import { DefectGallery, ImageResult } from "@/components/DefectGallery";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-
+import { supabase } from "@/integrations/supabase/client";
 const Index = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [results, setResults] = useState<ImageResult[]>([]);
@@ -21,27 +21,16 @@ const Index = () => {
             const base64Image = e.target?.result as string;
             
             // Call the edge function for real AI analysis
-            const response = await fetch(
-              `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-carpet-defect`,
-              {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-                },
-                body: JSON.stringify({
-                  image: base64Image,
-                  fileName: file.name,
-                }),
-              }
-            );
+            const { data: analysis, error } = await supabase.functions.invoke('analyze-carpet-defect', {
+              body: {
+                image: base64Image,
+                fileName: file.name,
+              },
+            });
 
-            if (!response.ok) {
-              const errorData = await response.json().catch(() => ({ error: 'Analysis failed' }));
-              throw new Error(errorData.error || 'Analysis failed');
+            if (error) {
+              throw new Error(error.message || 'Analysis failed');
             }
-
-            const analysis = await response.json();
             
             resolve({
               id: Math.random().toString(36).substr(2, 9),
