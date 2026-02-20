@@ -22,6 +22,7 @@ export type Database = {
           file_name: string
           has_defect: boolean
           id: string
+          user_id: string
         }
         Insert: {
           confidence: number
@@ -30,6 +31,7 @@ export type Database = {
           file_name: string
           has_defect: boolean
           id?: string
+          user_id: string
         }
         Update: {
           confidence?: number
@@ -38,6 +40,7 @@ export type Database = {
           file_name?: string
           has_defect?: boolean
           id?: string
+          user_id?: string
         }
         Relationships: []
       }
