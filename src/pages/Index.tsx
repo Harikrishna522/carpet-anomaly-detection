@@ -1,13 +1,35 @@
-import { useState } from "react";
-import { Scan, Zap, Shield, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Scan, Zap, Shield, TrendingUp, LogOut } from "lucide-react";
 import { UploadZone } from "@/components/UploadZone";
 import { DefectGallery, ImageResult } from "@/components/DefectGallery";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+
 const Index = () => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [results, setResults] = useState<ImageResult[]>([]);
+  const [user, setUser] = useState<any>(null);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!session) navigate("/auth");
+      else setUser(session.user);
+    });
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) navigate("/auth");
+      else setUser(session.user);
+    });
+    return () => subscription.unsubscribe();
+  }, [navigate]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
 
   const handleImagesUpload = async (files: File[]) => {
     setIsAnalyzing(true);
@@ -20,7 +42,6 @@ const Index = () => {
           try {
             const base64Image = e.target?.result as string;
             
-            // Call the edge function for real AI analysis
             const { data: analysis, error } = await supabase.functions.invoke('analyze-carpet-defect', {
               body: {
                 image: base64Image,
@@ -31,8 +52,8 @@ const Index = () => {
             if (error) {
               throw new Error(error.message || 'Analysis failed');
             }
-            
-            // Save to database
+
+            // Save to database with user_id
             const { data: saved, error: saveError } = await supabase
               .from('defect_analyses')
               .insert({
@@ -40,6 +61,7 @@ const Index = () => {
                 has_defect: analysis.hasDefect,
                 confidence: analysis.confidence,
                 defect_type: analysis.defectType || null,
+                user_id: user?.id,
               })
               .select()
               .single();
@@ -88,11 +110,19 @@ const Index = () => {
     setResults([]);
   };
 
+  if (!user) return null;
+
   return (
     <div className="min-h-screen bg-gradient-hero">
       {/* Hero Section */}
       <header className="container mx-auto px-4 py-16 text-center animate-fade-in">
         <div className="max-w-4xl mx-auto">
+          <div className="flex justify-end mb-4">
+            <Button variant="outline" size="sm" onClick={handleSignOut}>
+              <LogOut className="w-4 h-4 mr-2" />
+              Sign Out
+            </Button>
+          </div>
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-6">
             <Zap className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium text-primary">Powered by ResNet50</span>
