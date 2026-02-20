@@ -14,7 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      defect_analyses: {
+        Row: {
+          confidence: number
+          created_at: string
+          defect_type: string | null
+          file_name: string
+          has_defect: boolean
+          id: string
+        }
+        Insert: {
+          confidence: number
+          created_at?: string
+          defect_type?: string | null
+          file_name: string
+          has_defect: boolean
+          id?: string
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          defect_type?: string | null
+          file_name?: string
+          has_defect?: boolean
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

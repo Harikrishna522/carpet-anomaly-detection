@@ -32,8 +32,24 @@ const Index = () => {
               throw new Error(error.message || 'Analysis failed');
             }
             
+            // Save to database
+            const { data: saved, error: saveError } = await supabase
+              .from('defect_analyses')
+              .insert({
+                file_name: file.name,
+                has_defect: analysis.hasDefect,
+                confidence: analysis.confidence,
+                defect_type: analysis.defectType || null,
+              })
+              .select()
+              .single();
+
+            if (saveError) {
+              console.error('Failed to save analysis:', saveError);
+            }
+
             resolve({
-              id: Math.random().toString(36).substr(2, 9),
+              id: saved?.id || Math.random().toString(36).substr(2, 9),
               imageUrl: base64Image,
               hasDefect: analysis.hasDefect,
               confidence: analysis.confidence,
