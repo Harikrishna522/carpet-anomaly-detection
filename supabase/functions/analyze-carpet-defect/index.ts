@@ -1,6 +1,5 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,21 +12,6 @@ serve(async (req) => {
   }
 
   try {
-    // Authenticate the user
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
-    );
-
-    const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
-    if (authError || !user) {
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
     const { image, fileName } = await req.json();
     
     if (!image) {
@@ -46,7 +30,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Analyzing image: ${fileName || 'unknown'} for user: ${user.id}`);
+    console.log(`Analyzing image: ${fileName || 'unknown'}`);
 
     // Call Lovable AI with vision capabilities
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -129,6 +113,7 @@ Be strict but accurate. Only mark as defect if you're confident.`
     // Parse the JSON response from AI
     let analysisResult;
     try {
+      // Extract JSON from markdown code blocks if present
       const jsonMatch = aiResponse.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/) || 
                        aiResponse.match(/(\{[\s\S]*?\})/);
       const jsonStr = jsonMatch ? jsonMatch[1] : aiResponse;
@@ -141,6 +126,7 @@ Be strict but accurate. Only mark as defect if you're confident.`
       );
     }
 
+    // Validate the response structure
     if (typeof analysisResult.hasDefect !== 'boolean' || 
         typeof analysisResult.confidence !== 'number') {
       console.error('Invalid analysis result structure:', analysisResult);
@@ -160,7 +146,7 @@ Be strict but accurate. Only mark as defect if you're confident.`
   } catch (error) {
     console.error('Error in analyze-carpet-defect:', error);
     return new Response(
-      JSON.stringify({ error: 'An unexpected error occurred' }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
